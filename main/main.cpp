@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "NimBLEDevice.h"
-#include "nvs_flash.h"
+#include "nvs_flash.h" // sistema de almacenamiento no volátil
 #include "esp_log.h"
 
 extern "C"
@@ -14,6 +14,19 @@ const static char *TAG = "MAIN";
 static bool filamento_habilitado = false;
 // Guardamos el último porcentaje configurado por el usuario (por defecto 80%)
 static uint8_t ultima_potencia_configurada = 50;
+// 1. Crear la clase de callbacks para el servidor global
+// Callback corregido para el servidor global
+class MisCallbacksServidor : public NimBLEServerCallbacks
+{
+    // Agregamos "int reason" como tercer parámetro obligatorio de la firma en v6
+    void onDisconnect(NimBLEServer *pServer, NimBLEConnInfo &connInfo, int reason) override
+    {
+        ESP_LOGI(TAG, "Celular desconectado (Razón: %d). Reiniciando anuncios...", reason);
+        // Forzamos a la antena a volver a transmitir su nombre al aire de inmediato
+        NimBLEDevice::startAdvertising();
+    }
+};
+
 // Callback para la Característica de Comandos Generales (UUID: 5678)
 class CallbacksComandos : public NimBLECharacteristicCallbacks
 {
@@ -87,7 +100,8 @@ extern "C" void app_main(void)
     NimBLEDevice::init("Control-Globos");
     NimBLEServer *pServer = NimBLEDevice::createServer();
     NimBLEService *pServicio = pServer->createService("1234");
-
+    // VINCULAR LOS CALLBACKS AL SERVIDOR AQUÍ:
+    pServer->setCallbacks(new MisCallbacksServidor());
     // Registro de la Característica 1: Comandos Estatales
     NimBLECharacteristic *pCaracteristicaCmd = pServicio->createCharacteristic("5678", NIMBLE_PROPERTY::WRITE);
     pCaracteristicaCmd->setCallbacks(new CallbacksComandos());

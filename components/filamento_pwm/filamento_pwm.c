@@ -3,7 +3,7 @@
 #include "driver/ledc.h"
 #include "esp_err.h"
 #include "esp_log.h"
-static const char *TAG = "PWM_CONTROL";
+static const char *TAG = "PWM";
 void filamento_pwm_init(void)
 {
     // Prepare and then apply the LEDC PWM timer configuration
@@ -53,7 +53,7 @@ void Activar_filamento(uint8_t porcentaje_potencia)
     uint32_t duty_cycle = (8192 * (uint32_t)porcentaje_potencia) / 100;
 
     // Imprime en el monitor el valor real del Duty que se aplicará (debe ser entre 0 y 8192)
-    ESP_LOGI(TAG, "Porcentaje: %d%% -> Valor Duty Aplicado: %lu", porcentaje_potencia, duty_cycle);
+    // ESP_LOGI(TAG, "Porcentaje: %d%% -> Valor Duty Aplicado: %lu", porcentaje_potencia, duty_cycle);
     ESP_ERROR_CHECK(ledc_set_duty(PWM_MODO, PWM_CANAL, duty_cycle));
     // Update duty to apply the new value
     ESP_ERROR_CHECK(ledc_update_duty(PWM_MODO, PWM_CANAL));
