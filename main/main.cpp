@@ -12,8 +12,8 @@ const static char *TAG = "MAIN";
 
 // Variable de estado global para controlar si el canal está habilitado o no
 static bool filamento_habilitado = false;
-// Guardamos el último porcentaje configurado por el usuario (por defecto 80%)
-static uint8_t ultima_potencia_configurada = 50;
+// Guardamos el último porcentaje configurado por el usuario (por defecto 30%)
+static uint8_t ultima_potencia_configurada = 30;
 // 1. Crear la clase de callbacks para el servidor global
 // Callback corregido para el servidor global
 class MisCallbacksServidor : public NimBLEServerCallbacks
