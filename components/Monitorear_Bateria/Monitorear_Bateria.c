@@ -86,6 +86,35 @@ void battery_init(void)
     {
         ESP_LOGW(TAG, "Fallo de calibración. Usando aproximación matemática.");
     }
+    // =========================================================================
+    // CORRECCIÓN: INICIALIZACIÓN FORZADA DEL FILTRO DIGITAL (SEEDING)
+    // =========================================================================
+    // Tomamos una lectura instantánea inicial para romper los 8.4V por defecto
+    // y clavar la memoria en el voltaje real exacto de la batería al arrancar.
+    int raw_inicial = 0;
+    int mv_inicial = 0;
+
+    adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &raw_inicial);
+
+    if (adc_calibrado)
+    {
+        adc_cali_raw_to_voltage(cali_handle, raw_inicial, &mv_inicial);
+    }
+    else
+    {
+        mv_inicial = (raw_inicial * 2500) / 4095;
+    }
+
+    // Calculamos el voltaje inicial con tu constante definitiva calibrada de hardware (4.4336f)
+    float v_inicial = (mv_inicial / 1000.0f) * 4.4336f;
+
+    // Sobrescribimos el historial de la variable global con la realidad de tus baterías
+    v_filtrado_ema = v_inicial;
+
+    // Calculamos el porcentaje inicial directo desde la tabla para inicializar la histéresis
+    pct_estable = calcular_porcentaje_lut(v_filtrado_ema);
+
+    ESP_LOGI(TAG, "Filtro inicializado con éxito. Voltaje de arranque detectado: %.2fV (%d%%)", v_filtrado_ema, pct_estable);
 }
 
 void battery_update(void)
@@ -138,7 +167,6 @@ void battery_update(void)
      * ========================================================================= */
     float v_inst_bateria = voltaje_pin * 4.4336f;
 
-    float v_inst_bateria = voltaje_pin * 4.4336f;
     // 2. Filtro Digital EMA (Suaviza los bajones masivos del filamento)
     v_filtrado_ema = (EMA_ALPHA * v_inst_bateria) + ((1.0f - EMA_ALPHA) * v_filtrado_ema);
 
