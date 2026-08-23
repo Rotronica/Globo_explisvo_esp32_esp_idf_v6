@@ -3,6 +3,7 @@
 #include "driver/ledc.h"
 #include "esp_err.h"
 #include "esp_log.h"
+#include "driver/gpio.h"
 static const char *TAG = "PWM";
 void filamento_pwm_init(void)
 {
@@ -40,6 +41,11 @@ void filamento_pwm_init(void)
     {
         ESP_LOGI(TAG, "Canal pwm configurado exitosamente");
     }
+
+    // Luz piloto
+    gpio_set_direction(LED_PILOTO, GPIO_MODE_OUTPUT);
+    // Limpiar el pin GPIO
+    gpio_set_level(LED_PILOTO, !false);
 }
 void Activar_filamento(uint8_t porcentaje_potencia)
 {
@@ -62,4 +68,10 @@ void Desactivar_filamento(void)
 {
     ledc_set_duty(PWM_MODO, PWM_CANAL, 0);
     ledc_update_duty(PWM_MODO, PWM_CANAL);
+}
+void Luz_piloto_filamento(bool estado)
+{
+    // Esta negado por que el led que lleva integrado la esp32c3 esta conectado al revez
+    //  el catodo al gpio y el anodo debe estar conectado a VCC
+    gpio_set_level(LED_PILOTO, !estado);
 }
