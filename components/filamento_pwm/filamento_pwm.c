@@ -4,7 +4,106 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
+#include "esp_timer.h"
 static const char *TAG = "PWM";
+
+// Variables del temporizador hardware
+static esp_timer_handle_t timer_seguridad = NULL;
+static bool temporizador_activo = false;
+volatile bool filamento_habilitado = false;
+extern volatile bool filamento_habilitado;
+
+// Callback que se ejecuta CUANDO EL TEMPORIZADOR EXPIRA (en interrupción)
+static void temporizador_seguridad_callback(void *arg)
+{
+    // ⚠️ ESTO SE EJECUTA EN CONTEXTO DE INTERRUPCIÓN
+    // No usar ESP_LOGI aquí (puede causar problemas)
+
+    // Apagar el filamento DIRECTAMENTE
+    Desactivar_filamento();
+    Luz_piloto_filamento(false);
+
+    temporizador_activo = false;
+
+    // Marcar que el filamento está apagado (variable global)
+    // Usar una variable volátil para que el compilador no optimice
+    filamento_habilitado = false;
+}
+
+// Inicializar el temporizador hardware
+void temporizador_seguridad_init(void)
+{
+    esp_timer_create_args_t timer_args = {
+        .callback = temporizador_seguridad_callback,
+        .arg = NULL,
+        .dispatch_method = ESP_TIMER_TASK, // Ejecutar en la tarea de temporizadores
+        .name = "seguridad_timer"};
+    ESP_ERROR_CHECK(esp_timer_create(&timer_args, &timer_seguridad));
+    ESP_LOGI(TAG, "✅ Temporizador de seguridad inicializado");
+}
+
+// Iniciar el temporizador (NUNCA se reinicia si ya está activo)
+void temporizador_seguridad_iniciar(uint16_t tiempo_ms)
+{
+    // Si el temporizador ya está activo, NO hacer nada
+    if (temporizador_activo)
+    {
+        ESP_LOGD(TAG, "⏰ Temporizador ya activo, ignorando reinicio");
+        return;
+    }
+
+    // Detener cualquier temporizador anterior
+    if (timer_seguridad != NULL)
+    {
+        esp_timer_stop(timer_seguridad);
+    }
+
+    // Iniciar el temporizador
+    temporizador_activo = true;
+    ESP_ERROR_CHECK(esp_timer_start_once(timer_seguridad, tiempo_ms * 1000)); // microsegundos
+    ESP_LOGI(TAG, "⏰ Temporizador iniciado: %dms", tiempo_ms);
+}
+
+// Resetear el temporizador
+void temporizador_seguridad_resetear(void)
+{
+    if (timer_seguridad != NULL)
+    {
+        esp_timer_stop(timer_seguridad);
+    }
+    temporizador_activo = false;
+    ESP_LOGD(TAG, "⏰ Temporizador reseteado");
+}
+
+// Función para obtener tiempo seguro según porcentaje
+uint16_t obtener_tiempo_seguro(uint8_t porcentaje)
+{
+    switch (porcentaje)
+    {
+    case 10:
+        return 5000;
+    case 20:
+        return 4000;
+    case 30:
+        return 3000; // 3 segundos para 30%
+    case 40:
+        return 2000;
+    case 50:
+        return 1500; // 1.5 segundos para 50%
+    case 60:
+        return 1200;
+    case 70:
+        return 1000;
+    case 80:
+        return 800;
+    case 90:
+        return 600;
+    case 100:
+        return 400;
+    default:
+        return 2000;
+    }
+}
 void filamento_pwm_init(void)
 {
     // Prepare and then apply the LEDC PWM timer configuration

@@ -106,7 +106,7 @@ void battery_init(void)
     }
 
     // Calculamos el voltaje inicial con tu constante definitiva calibrada de hardware (4.4336f)
-    float v_inicial = (mv_inicial / 1000.0f) * 4.4336f;
+    float v_inicial = (mv_inicial / 1000.0f) * 4.5445f;
 
     // Sobrescribimos el historial de la variable global con la realidad de tus baterías
     v_filtrado_ema = v_inicial;
@@ -165,7 +165,7 @@ void battery_update(void)
      * Al aplicar 4.4336f, alineamos con precisión milimétrica el sensor del sistema
      * IoT con el instrumento de medición físico, eliminando el error residual.
      * ========================================================================= */
-    float v_inst_bateria = voltaje_pin * 4.4336f;
+    float v_inst_bateria = voltaje_pin * 4.;
 
     // 2. Filtro Digital EMA (Suaviza los bajones masivos del filamento)
     v_filtrado_ema = (EMA_ALPHA * v_inst_bateria) + ((1.0f - EMA_ALPHA) * v_filtrado_ema);

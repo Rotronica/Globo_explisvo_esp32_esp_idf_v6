@@ -14,7 +14,7 @@ extern "C"
 const static char *TAG = "MAIN";
 
 // Variable de estado global para controlar si el canal está habilitado o no
-static bool filamento_habilitado = false;
+// static bool filamento_habilitado = false;
 // Guardamos el último porcentaje configurado por el usuario (por defecto 30%)
 static uint8_t ultima_potencia_configurada = 30;
 
@@ -46,6 +46,7 @@ class CallbacksComandos : public NimBLECharacteristicCallbacks
                 filamento_habilitado = false; // 1. Cambia el estado a falso
                 Desactivar_filamento();       // 2. Apaga el MOSFET físicamente
                 Luz_piloto_filamento(false);
+                temporizador_seguridad_resetear(); // ← Resetear el temporizador
 
                 // El monitoreo se volverá a encender automáticamente en la tarea de FreeRTOS
                 ESP_LOGI(TAG, "Comando recibido: Sistema DESACTIVADO. Monitoreo de batería ENCENDIDO.");
@@ -57,12 +58,25 @@ class CallbacksComandos : public NimBLECharacteristicCallbacks
                     ESP_LOGE(TAG, "¡DISPARO DENEGADO! Batería en nivel crítico (%.2fV).", battery_get_voltage());
                     break;
                 }
+                // Si el filamento ya está activo, NO hacer nada
+                if (filamento_habilitado)
+                {
+                    ESP_LOGD(TAG, "Filamento ya activo, ignorando");
+                    break;
+                }
 
-                filamento_habilitado = true;                    // 1. Cambia el estado a verdadero (Esto apaga la lectura del ADC)
-                Activar_filamento(ultima_potencia_configurada); // 2. Enciende el MOSFET físicamente
+                // Activar filamento
+                filamento_habilitado = true;
+                Activar_filamento(ultima_potencia_configurada);
                 Luz_piloto_filamento(true);
 
-                ESP_LOGI(TAG, "Comando recibido: Sistema ACTIVADO al %d%%. Monitoreo de batería APAGADO.", ultima_potencia_configurada);
+                // Iniciar temporizador de seguridad
+                static uint16_t tiempo_seguro = 0;
+                tiempo_seguro = obtener_tiempo_seguro(ultima_potencia_configurada);
+                temporizador_seguridad_iniciar(tiempo_seguro);
+
+                ESP_LOGI(TAG, "🔥 Filamento ACTIVADO al %d%%. Tiempo seguro: 3000ms",
+                         ultima_potencia_configurada);
                 break;
 
             default:
@@ -173,6 +187,7 @@ extern "C" void app_main(void)
     }
 
     filamento_pwm_init();
+    temporizador_seguridad_init(); // ← INICIALIZAR EL TEMPORIZADOR HARDWARE
 
     NimBLEDevice::init("Control-Globos");
     NimBLEServer *pServer = NimBLEDevice::createServer();
