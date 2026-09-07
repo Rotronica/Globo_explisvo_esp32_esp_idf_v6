@@ -5,6 +5,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#define TEMPORIZADOR_DE_SEGURIDAD
+
 extern "C"
 {
 #include "filamento_pwm.h"
@@ -46,8 +48,9 @@ class CallbacksComandos : public NimBLECharacteristicCallbacks
                 filamento_habilitado = false; // 1. Cambia el estado a falso
                 Desactivar_filamento();       // 2. Apaga el MOSFET físicamente
                 Luz_piloto_filamento(false);
+#ifdef TEMPORIZADOR_DE_SEGURIDAD
                 temporizador_seguridad_resetear(); // ← Resetear el temporizador
-
+#endif
                 // El monitoreo se volverá a encender automáticamente en la tarea de FreeRTOS
                 ESP_LOGI(TAG, "Comando recibido: Sistema DESACTIVADO. Monitoreo de batería ENCENDIDO.");
                 break;
@@ -58,6 +61,7 @@ class CallbacksComandos : public NimBLECharacteristicCallbacks
                     ESP_LOGE(TAG, "¡DISPARO DENEGADO! Batería en nivel crítico (%.2fV).", battery_get_voltage());
                     break;
                 }
+#ifdef TEMPORIZADOR_DE_SEGURIDAD
                 // Si el filamento ya está activo, NO hacer nada
                 if (filamento_habilitado)
                 {
@@ -74,7 +78,11 @@ class CallbacksComandos : public NimBLECharacteristicCallbacks
                 static uint16_t tiempo_seguro = 0;
                 tiempo_seguro = obtener_tiempo_seguro(ultima_potencia_configurada);
                 temporizador_seguridad_iniciar(tiempo_seguro);
-
+#else
+                filamento_habilitado = true;
+                Activar_filamento(ultima_potencia_configurada);
+                Luz_piloto_filamento(true);
+#endif
                 ESP_LOGI(TAG, "🔥 Filamento ACTIVADO al %d%%. Tiempo seguro: 3000ms",
                          ultima_potencia_configurada);
                 break;

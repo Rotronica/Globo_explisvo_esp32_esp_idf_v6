@@ -14,6 +14,7 @@ static float v_filtrado_ema = 8.4f;
 static int pct_estable = 100;
 static battery_state_t estado_actual = BATTERY_STATE_NORMAL;
 
+//--------Variables del ADC--------------
 static adc_oneshot_unit_handle_t adc1_handle;
 static adc_cali_handle_t cali_handle = NULL;
 static bool adc_calibrado = false;
@@ -26,7 +27,17 @@ typedef struct
 } lut_battery_t;
 
 static const lut_battery_t tabla_descarga[] = {
-    {8.40f, 100}, {8.20f, 95}, {8.00f, 90}, {7.80f, 80}, {7.60f, 70}, {7.40f, 50}, {7.20f, 30}, {7.00f, 15}, {6.50f, 5}, {6.00f, 0}};
+    {8.40f, 100},
+    {8.20f, 95},
+    {8.00f, 90},
+    {7.80f, 80},
+    {7.60f, 70},
+    {7.40f, 50},
+    {7.20f, 30},
+    {7.00f, 15},
+    {6.50f, 5},
+    {6.00f, 0},
+};
 static const int TAMANO_TABLA = sizeof(tabla_descarga) / sizeof(lut_battery_t);
 
 // Función interna para calcular la interpolación lineal en la LUT
