@@ -80,6 +80,8 @@ uint16_t obtener_tiempo_seguro(uint8_t porcentaje)
 {
     switch (porcentaje)
     {
+    case 5:
+        return 6000;
     case 10:
         return 5000;
     case 20:
